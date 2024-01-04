@@ -1,8 +1,9 @@
-import streamlit as st
-import pandas as pandas
-import numpy as np
+from flask import Flask,request,render_template
+import numpy as np 
 import pickle
+model = pickle.load(open('lin_model.pkl','rb'))
 
+application = Flask(__name__)
 Status  = {
 "New" : 0,"Ready to move" : 1,"Resale" : 2,"Under Construction" : 3,}
 
@@ -15,32 +16,38 @@ Facing  = {
 Type  = {
 "Apartment" : 0,"Independent Floor" : 1,"Independent House" : 2,"Residential Plot" : 3,"Studio Apartment" : 4,"Villa" : 5,}
 
-model = pickle.load(open('lin_model.pkl','rb'))
+@application.route('/')
+def index():
 
-#creating the function to accept inputs and creating a 2d array and predicting the result.
-def predict(bedrooms, bathrooms,status,size,location,facing,Types):
-    Select_location=Location[location]
-    Select_status =Status[status]
-    Select_facing=Facing[facing]
-    Select_type=Type[Types]
-    user_input = np.array([[bedrooms,bathrooms,Select_status,Select_location,Select_facing,Select_type,size]])
+    return render_template('index.html',Status=Status,Location=Location,Facing=Facing,Type=Type)
+
+
+
+@application.route('/home')
+def home():
+    return "Hello Kitsss!"
+
+@application.route('/predict',methods=['POST'])
+def result():
+    bedrooms = int(request.form['bedrooms'])
+    bathrooms = int(request.form['bathrooms'])
+    status = int(request.form['status'])
+    location = int(request.form['location'])
+    facing= int(request.form['facing'])
+    Types= int(request.form['type'])
+    size = int(request.form['area'])
+
+    user_input = np.array([[bedrooms,bathrooms,status,location,facing,Types,size]])
     result = model.predict(user_input)[0].round(2)
-    return result
+    return render_template('index.html',prediction = result,Status=Status,Location=Location,Facing=Facing,Type=Type)
+
+
+    
+
+    
+    return request.method
+
+
 if __name__=="__main__":
-    st.header("House Prioce Prediction")
-    col1,col2 = st.columns([2,1])
-    bedrooms = col1.slid
-    er("No.of Bedrooms",max_value=10,min_value=1)
-    bathrooms = col1.slider("No.of Bathrooms",max_value=10,min_value=1)
-    status = col1.selectbox("Select Status:",list(Status.keys()))
-    size = col2.number_input("Enter SQFT",min_value=500,max_value=10000,value=1000,step=500)
-    location = col2.selectbox("Select Location:",list(Location.keys()))
-    facing = col2.selectbox("Select Facing:",list(Facing.keys()))
-    Types = col1.selectbox("Select Type:",list(Type.keys()))
-    result = predict(bedrooms,bathrooms,status,size,location,facing,Types)
-    submit_button = st.button("Predict")
-    if submit_button:
-        larger_text=f"<h2 style='color:red;'>The Predicted Price is:{result} Lakhs</h2>" 
-        st.markdown(larger_text,unsafe_allow_html=True)
-        
+    application.run(use_reloader=True,debug=True)
 
